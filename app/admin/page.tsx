@@ -1,32 +1,80 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
 import firebaseConfig from '@/firebase-applet-config.json';
-import { Navbar } from '@/components/Navbar';
 
-// Initialize Firebase
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 
 const provider = new GoogleAuthProvider();
-// Request Google Sheets scope
 provider.addScope('https://www.googleapis.com/auth/spreadsheets');
+
+type OrderItem = {
+  id: string;
+  title: string;
+  quantity: number;
+  price: number;
+};
+
+type Order = {
+  id: string;
+  orderID: string;
+  amount: string;
+  items: OrderItem[];
+  status: string;
+  createdAt: string;
+};
 
 export default function AdminPage() {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [idToken, setIdToken] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      if (u) {
+        const fresh = await u.getIdToken();
+        setIdToken(fresh);
+      }
     });
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (idToken) {
+      fetchOrders(idToken);
+    }
+  }, [idToken]);
+
+  const fetchOrders = async (currentIdToken: string) => {
+    setOrdersLoading(true);
+    setOrdersError(null);
+    try {
+      const res = await fetch('/api/admin/orders', {
+        headers: { Authorization: `Bearer ${currentIdToken}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setOrders(data.orders);
+      } else {
+        setOrdersError(data.error || 'Failed to load orders.');
+      }
+    } catch (err) {
+      setOrdersError('Failed to load orders.');
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     setIsLoggingIn(true);
@@ -37,6 +85,8 @@ export default function AdminPage() {
         setToken(credential.accessToken);
         setUser(result.user);
       }
+      const fresh = await result.user.getIdToken();
+      setIdToken(fresh);
     } catch (err) {
       console.error('Login failed:', err);
     } finally {
@@ -51,9 +101,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin/sync-sheets', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       if (data.success) {
@@ -72,14 +120,10 @@ export default function AdminPage() {
     <div className="flex-1 bg-slate-50 min-h-screen">
       <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
         <h1 className="text-3xl font-black text-slate-800 mb-8 uppercase tracking-tight">Admin Dashboard</h1>
-        
-        <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm max-w-2xl">
-          <h2 className="text-xl font-bold text-slate-700 mb-4">Export Leads to Google Sheets</h2>
-          <p className="text-slate-500 text-sm mb-6">
-            Authenticate with Google to create a spreadsheet containing all your collected leads.
-          </p>
 
-          {!user || !token ? (
+        {!user ? (
+          <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm max-w-2xl">
+            <p className="text-slate-500 text-sm mb-6">Sign in with Google to view orders and manage leads.</p>
             <button
               onClick={handleLogin}
               disabled={isLoggingIn}
@@ -94,8 +138,10 @@ export default function AdminPage() {
               </svg>
               {isLoggingIn ? 'Signing in...' : 'Sign in with Google'}
             </button>
-          ) : (
-            <div className="space-y-4">
+          </div>
+        ) : (
+          <>
+            <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm max-w-2xl mb-8">
               <div className="flex items-center gap-3 mb-6 p-4 bg-green-50 rounded-lg border border-green-100">
                 <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold">✓</div>
                 <div>
@@ -104,6 +150,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
+              <h2 className="text-xl font-bold text-slate-700 mb-4">Export Leads to Google Sheets</h2>
               <button
                 onClick={handleSync}
                 disabled={isSyncing}
@@ -111,15 +158,58 @@ export default function AdminPage() {
               >
                 {isSyncing ? 'Syncing to Sheets...' : 'Sync Leads to Google Sheets'}
               </button>
-
               {syncMessage && (
                 <div className="mt-4 p-4 text-sm font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg break-words">
                   {syncMessage}
                 </div>
               )}
             </div>
-          )}
-        </div>
+
+            <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-slate-700">Orders ({orders.length})</h2>
+                <button
+                  onClick={() => idToken && fetchOrders(idToken)}
+                  className="text-sm font-bold text-pink-600 hover:text-pink-700"
+                >
+                  Refresh
+                </button>
+              </div>
+
+              {ordersLoading && <p className="text-slate-500 text-sm">Loading orders...</p>}
+              {ordersError && <p className="text-red-500 text-sm">{ordersError}</p>}
+
+              {!ordersLoading && orders.length === 0 && (
+                <p className="text-slate-500 text-sm">No orders yet.</p>
+              )}
+
+              <div className="space-y-4">
+                {orders.map(order => (
+                  <div key={order.id} className="border border-slate-200 rounded-xl p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <p className="text-xs text-slate-400 font-semibold">PayPal Order ID</p>
+                        <p className="text-sm font-bold text-slate-700">{order.orderID}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-slate-400 font-semibold">{new Date(order.createdAt).toLocaleString()}</p>
+                        <p className="text-lg font-black text-blue-600 italic">${order.amount}</p>
+                      </div>
+                    </div>
+                    <div className="border-t border-slate-100 pt-3 space-y-1">
+                      {order.items?.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-sm text-slate-600">
+                          <span>{item.quantity}x {item.title}</span>
+                          <span className="font-semibold">${(item.price * item.quantity).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
