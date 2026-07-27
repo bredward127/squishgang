@@ -9,7 +9,11 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const idToken = authHeader.replace('Bearer ', '');
-    await getAuth().verifyIdToken(idToken);
+    const decoded = await getAuth().verifyIdToken(idToken);
+    const ALLOWED_ADMIN_EMAILS = ['edjones0127@gmail.com', '3ddi300@gmail.com'];
+    if (!decoded.email || !ALLOWED_ADMIN_EMAILS.includes(decoded.email)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
     const snapshot = await db.collection('orders').orderBy('createdAt', 'desc').get();
     const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

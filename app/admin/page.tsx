@@ -11,6 +11,8 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 provider.addScope('https://www.googleapis.com/auth/spreadsheets');
 
+const ALLOWED_ADMIN_EMAILS = ['edjones0127@gmail.com', '3ddi300@gmail.com'];
+
 type OrderItem = {
   id: string;
   title: string;
@@ -38,6 +40,7 @@ export default function AdminPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [unauthorized, setUnauthorized] = useState(false);
 
   const fetchOrders = async (currentIdToken: string) => {
     setOrdersLoading(true);
@@ -61,6 +64,14 @@ export default function AdminPage() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      if (u && u.email && !ALLOWED_ADMIN_EMAILS.includes(u.email)) {
+        await auth.signOut();
+        setUser(null);
+        setIdToken(null);
+        setUnauthorized(true);
+        return;
+      }
+      setUnauthorized(false);
       setUser(u);
       if (u) {
         const fresh = await u.getIdToken();
@@ -79,8 +90,14 @@ export default function AdminPage() {
 
   const handleLogin = async () => {
     setIsLoggingIn(true);
+    setUnauthorized(false);
     try {
       const result = await signInWithPopup(auth, provider);
+      if (!result.user.email || !ALLOWED_ADMIN_EMAILS.includes(result.user.email)) {
+        await auth.signOut();
+        setUnauthorized(true);
+        return;
+      }
       const credential = GoogleAuthProvider.credentialFromResult(result);
       if (credential?.accessToken) {
         setToken(credential.accessToken);
@@ -124,6 +141,11 @@ export default function AdminPage() {
 
         {!user ? (
           <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm max-w-2xl">
+            {unauthorized && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-lg text-sm font-semibold text-red-600">
+                That Google account isn't authorized for admin access.
+              </div>
+            )}
             <p className="text-slate-500 text-sm mb-6">Sign in with Google to view orders and manage leads.</p>
             <button
               onClick={handleLogin}
