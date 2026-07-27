@@ -105,7 +105,7 @@ export default function CartPage() {
               </div>
               <div className="flex justify-between">
                 <span>Shipping</span>
-                <span className="text-indigo-600 font-bold">Free via AliExpress</span>
+                <span className="text-indigo-600 font-bold">Free</span>
               </div>
               <div className="border-t border-slate-200 pt-4 flex justify-between items-center">
                 <span className="font-black text-slate-800 text-lg uppercase">Total</span>
