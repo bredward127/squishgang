@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow anyone to create a lead, but no one to read them directly from client
+    match /leads/{document=**} {
+      allow create: if true;
+      allow read, update, delete: if false;
+    }
+  }
+}
