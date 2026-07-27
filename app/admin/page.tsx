@@ -39,23 +39,6 @@ export default function AdminPage() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) {
-        const fresh = await u.getIdToken();
-        setIdToken(fresh);
-      }
-    });
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    if (idToken) {
-      fetchOrders(idToken);
-    }
-  }, [idToken]);
-
   const fetchOrders = async (currentIdToken: string) => {
     setOrdersLoading(true);
     setOrdersError(null);
@@ -75,6 +58,23 @@ export default function AdminPage() {
       setOrdersLoading(false);
     }
   };
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      if (u) {
+        const fresh = await u.getIdToken();
+        setIdToken(fresh);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (idToken) {
+      fetchOrders(idToken);
+    }
+  }, [idToken]);
 
   const handleLogin = async () => {
     setIsLoggingIn(true);
