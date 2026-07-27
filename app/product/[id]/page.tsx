@@ -56,7 +56,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             
             <div className="mt-8 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Shipping Info</p>
-              <p className="text-xs text-slate-600 font-medium">Ships worldwide. Please allow 10-15 business days for delivery. Dispatched via AliExpress Sync.</p>
+              <p className="text-xs text-slate-600 font-medium">Ships worldwide. Please allow 10-15 business days for delivery.</p>
             </div>
           </div>
         </div>
