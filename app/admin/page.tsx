@@ -72,6 +72,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (idToken) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchOrders(idToken);
     }
   }, [idToken]);
