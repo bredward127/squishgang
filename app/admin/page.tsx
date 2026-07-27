@@ -143,7 +143,7 @@ export default function AdminPage() {
           <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm max-w-2xl">
             {unauthorized && (
               <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-lg text-sm font-semibold text-red-600">
-                That Google account isn't authorized for admin access.
+                That Google account isn&apos;t authorized for admin access.
               </div>
             )}
             <p className="text-slate-500 text-sm mb-6">Sign in with Google to view orders and manage leads.</p>
